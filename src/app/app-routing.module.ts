@@ -6,6 +6,11 @@ const routes: Routes = [
   {
     path: 'user/:id',
     component: BasicComponent,
+  },
+  {
+    path: '',
+    redirectTo: '/user/1',
+    pathMatch: 'full'
   }
 ];
 

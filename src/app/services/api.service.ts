@@ -11,7 +11,7 @@ export class ApiService {
   constructor(public http: HttpClient) { }
 
   public getRequest(url, params = {}) {
-    return this.http.get(url, {params}).pipe(
+    return this.http.get<any>(url, {params}).pipe(
       map(res => {
         return res;
       }),
@@ -22,6 +22,6 @@ export class ApiService {
   }
 
   public handleError(error: HttpErrorResponse) {
-    return throwError(error);
+    return throwError(() => error);
   }
 }

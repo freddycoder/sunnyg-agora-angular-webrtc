@@ -1,11 +1,9 @@
-import { HttpParams } from '@angular/common/http';
-import { Injectable } from '@angular/core';
 import AgoraRTC, { IAgoraRTCClient, LiveStreamingTranscodingConfig, ICameraVideoTrack, IMicrophoneAudioTrack, ScreenVideoTrackInitConfig, VideoEncoderConfiguration, AREAS, IRemoteAudioTrack, ClientRole } from "agora-rtc-sdk-ng"
 import { BehaviorSubject } from 'rxjs';
 import { ApiService } from './api.service';
-@Injectable({
-  providedIn: 'root'
-})
+import { Injectable } from "@angular/core";
+
+@Injectable({ providedIn: 'root'})
 export class StreamService {
   rtc: IRtc = {
     // For the local client.
@@ -15,9 +13,8 @@ export class StreamService {
     localVideoTrack: null,
   };
   options = {
-    appId: "",  // set your appid here
-    channel: "test", // Set the channel name.
-    // token: '', // Pass a token if your project enables the App Certificate.
+    appId: "<app-id-get-from-backend>",  // set your appid here
+    channel: "erabliereapi", // Set the channel name.
     // uid: null
   };
   remoteUsers: IUser[] = [];       // To add remote users in list
@@ -26,14 +23,20 @@ export class StreamService {
   constructor(public api: ApiService) { }
 
   createRTCClient() {
+    console.log("createRTCClient");
     this.rtc.client = AgoraRTC.createClient({ mode: "rtc", codec: "h264" });
+    console.log(this.rtc.client, 'createRTCClient');
+    console.log("*** done ceateRTCCLient ***");
   }
-
 
   // To join a call with tracks (video or audio)
   async localUser(token, uuid) {
-    const uid = await this.rtc.client.join(this.options.appId, this.options.channel,
-      token, uuid);
+    if (token == null) {
+      throw new Error("Token is null");
+    }
+    console.log("localUser", token, uuid);
+    const uid = await this.rtc.client.join(this.options.appId, this.options.channel, token, uuid);
+    console.log("after join", uid, 'uid');
     // Create an audio track from the audio sampled by a microphone.
     this.rtc.localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
     // Create a video track from the video captured by a camera.
@@ -45,10 +48,12 @@ export class StreamService {
     this.rtc.localVideoTrack.play("local-player");
     // channel for other users to subscribe to it.
     await this.rtc.client.publish([this.rtc.localAudioTrack, this.rtc.localVideoTrack]);
+
+    console.log("*** done localUser ***");
   }
 
   agoraServerEvents(rtc) {
-
+    console.log('agoraserverevent', rtc);
     rtc.client.on("user-published", async (user, mediaType) => {
       console.log(user, mediaType, 'user-published');
 
@@ -65,7 +70,6 @@ export class StreamService {
     rtc.client.on("user-unpublished", user => {
       console.log(user, 'user-unpublished');
     });
-
 
     rtc.client.on("user-joined", (user) => {
       let id = user.uid;
@@ -87,17 +91,15 @@ export class StreamService {
     });
     // Leave the channel.
     await this.rtc.client.leave();
-
   }
 
   // rtc token
   async generateTokenAndUid(uid) {
-
-    let url = 'https://test-agora.herokuapp.com/access_token?';
-    const opts = { params: new HttpParams({ fromString: "channel=test&uid=" + uid }) };
-    const data = await this.api.getRequest(url, opts.params).toPromise();
-    return { 'uid': uid, token: data['token'] }
-
+    // use the nestjs backend here: https://github.com/freddycoder/LearnNestJS
+    let url = 'http://localhost:3000/accesstoken/' + uid + '?channel=' + this.options.channel;
+    const data = await this.api.getRequest(url).toPromise();
+    console.log(data);
+    return { 'uid': uid, token: data.accessToken }
   }
 
   generateUid() {
@@ -106,13 +108,20 @@ export class StreamService {
     return randomNo;
   }
 
-
-
+  async initOption() {
+    let url = 'http://localhost:3000/accesstoken/appId/view';
+    const data = await this.api.getRequest(url).toPromise();
+    console.log(data);
+    this.options.appId = data.appId;
+    console.log('appId is:', this.options.appId);
+  }
 }
+
 export interface IUser {
   uid: number;
   name?: string;
 }
+
 export interface IRtc {
   client: IAgoraRTCClient,
   localAudioTrack: IMicrophoneAudioTrack,
